@@ -14,11 +14,15 @@
             background: #000;
             overflow: hidden;
         }
-        #player {
+        #player-container {
             position: fixed;
             inset: 0;
             width: 100vw;
             height: 100vh;
+        }
+        #player {
+            width: 100%;
+            height: 100%;
             border: none;
         }
         #click-overlay {
@@ -41,7 +45,9 @@
     </style>
 </head>
 <body>
-    <iframe id="player" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+    <div id="player-container">
+        <div id="player"></div>
+    </div>
     <div id="click-overlay">Click anywhere to play fullscreen</div>
     
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -72,13 +78,16 @@
                 // YouTube IFrame API callback
                 window.onYouTubeIframeAPIReady = function() {
                     player = new YT.Player('player', {
+                        width: '100%',
+                        height: '100%',
                         videoId: videoId,
                         playerVars: {
                             autoplay: 1,
                             mute: 1,
                             playsinline: 1,
                             rel: 0,
-                            controls: 1
+                            controls: 1,
+                            fs: 1
                         },
                         events: {
                             onReady: function(event) {
@@ -91,7 +100,7 @@
                 
                 // Click to go fullscreen and unmute
                 const overlay = document.getElementById('click-overlay');
-                const iframe = document.getElementById('player');
+                const container = document.getElementById('player-container');
                 
                 async function goFullscreen() {
                     overlay.classList.add('hidden');
@@ -101,16 +110,16 @@
                         player.unMute();
                     }
                     
-                    // Request fullscreen
+                    // Request fullscreen on the container
                     try {
-                        if (iframe.requestFullscreen) {
-                            await iframe.requestFullscreen();
-                        } else if (iframe.webkitRequestFullscreen) {
-                            await iframe.webkitRequestFullscreen();
-                        } else if (iframe.mozRequestFullScreen) {
-                            await iframe.mozRequestFullScreen();
-                        } else if (iframe.msRequestFullscreen) {
-                            await iframe.msRequestFullscreen();
+                        if (container.requestFullscreen) {
+                            await container.requestFullscreen();
+                        } else if (container.webkitRequestFullscreen) {
+                            await container.webkitRequestFullscreen();
+                        } else if (container.mozRequestFullScreen) {
+                            await container.mozRequestFullScreen();
+                        } else if (container.msRequestFullscreen) {
+                            await container.msRequestFullscreen();
                         }
                     } catch (err) {
                         console.log('Fullscreen not available:', err);
