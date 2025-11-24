@@ -3,171 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video</title>
+    <title>Plyr YouTube Player</title>
+    
+    <!-- Plyr CSS from CDN -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
         body {
-            background: #000;
-            overflow: hidden;
-        }
-        #player-container {
-            position: fixed;
-            inset: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #000;
-        }
-        #player iframe {
-            width: 100%;
-            height: 100%;
-        }
-        #click-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5); /* 50% transparency */
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            font-family: Arial, sans-serif;
             display: flex;
-            align-items: center;
             justify-content: center;
-            cursor: pointer;
-            z-index: 1000;
-            color: #fff;
-            font-family: sans-serif;
-            font-size: 24px;
-            text-align: center;
-            user-select: none;
+            align-items: center;
+            min-height: 100vh;
         }
-        #click-overlay.hidden {
-            display: none;
+        
+        .container {
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-
-    <div id="player-container">
-        <div id="player"></div>
+    <div class="container">
+        <h1>YouTube Player with Plyr</h1>
+        
+        <!-- YouTube Video Embed -->
+        <div class="plyr__video-embed">
+            <iframe
+                src="https://www.youtube.com/embed/dQw4w9WgXcQ?origin=https://example.com"
+                allowfullscreen
+                allowtransparency
+                allow="autoplay">
+            </iframe>
+        </div>
     </div>
 
-    <div id="click-overlay">Click anywhere to play fullscreen</div>
-
-    <script src="https://www.youtube.com/iframe_api"></script>
+    <!-- Plyr JS from CDN -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    
     <script>
-        let player = null;
-        let playerReady = false;
-
-        /* ------------------------------
-           GET & VALIDATE URL PARAMETER
-        ------------------------------ */
-        const params = new URLSearchParams(window.location.search);
-        const fullUrl = params.get("url");
-
-        if (!fullUrl) {
-            document.body.innerHTML =
-                '<div style="color:#fff;padding:20px;font-family:sans-serif;">Missing ?url=YOUTUBE_URL</div>';
-        }
-
-        /* ------------------------------
-           UNIVERSAL YOUTUBE ID PARSER
-        ------------------------------ */
-        function extractVideoId(url) {
-            try {
-                url = new URL(url, window.location.origin).toString();
-            } catch {
-                return null;
-            }
-
-            // Matches normal, embed, short, live, etc.
-            const patterns = [
-                /v=([A-Za-z0-9_-]{11})/,
-                /youtu\.be\/([A-Za-z0-9_-]{11})/,
-                /embed\/([A-Za-z0-9_-]{11})/,
-                /shorts\/([A-Za-z0-9_-]{11})/,
-                /live\/([A-Za-z0-9_-]{11})/,
-                /youtube\.com\/v\/([A-Za-z0-9_-]{11})/
-            ];
-
-            for (const p of patterns) {
-                const match = url.match(p);
-                if (match) return match[1];
-            }
-
-            return null;
-        }
-
-        const videoId = extractVideoId(fullUrl);
-
-        if (!videoId) {
-            document.body.innerHTML =
-                '<div style="color:#fff;padding:20px;font-family:sans-serif;">Invalid YouTube URL</div>';
-        }
-
-        /* ------------------------------
-           YOUTUBE IFRAME API INITIALIZER
-        ------------------------------ */
-        window.onYouTubeIframeAPIReady = function () {
-            player = new YT.Player("player", {
-                width: "100%",
-                height: "100%",
-                videoId: videoId,
-                playerVars: {
-                    autoplay: 1,
-                    mute: 1,
-                    playsinline: 1,
-                    rel: 0,
-                    controls: 1,
-                    fs: 1
-                },
-                events: {
-                    onReady: event => {
-                        playerReady = true;
-                        event.target.mute();
-                        event.target.playVideo();
-                    }
-                }
-            });
-        };
-
-        /* ------------------------------
-           FULLSCREEN HANDLER
-        ------------------------------ */
-        const overlay = document.getElementById("click-overlay");
-        const container = document.getElementById("player-container");
-
-        async function goFullscreen() {
-            if (!playerReady) return; // Prevents errors
-
-            overlay.classList.add("hidden");
-
-            // Unmute only after user interaction
-            try {
-                player.unMute();
-            } catch {}
-
-            // Fullscreen
-            try {
-                if (container.requestFullscreen) {
-                    await container.requestFullscreen();
-                } else if (container.webkitRequestFullscreen) {
-                    await container.webkitRequestFullscreen();
-                } else if (container.msRequestFullscreen) {
-                    await container.msRequestFullscreen();
-                }
-            } catch (err) {
-                console.log("Fullscreen failed:", err);
-            }
-        }
-
-        overlay.addEventListener("click", goFullscreen);
-
-        document.addEventListener("keydown", e => {
-            if (e.key === "Enter" || e.key === " ") {
-                goFullscreen();
-            }
+        // Initialize Plyr
+        const player = new Plyr('.plyr__video-embed', {
+            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+            settings: ['captions', 'quality', 'speed'],
+        });
+        
+        // Automatically enter fullscreen when ready
+        player.on('ready', event => {
+            console.log('Player is ready!');
+            
+            // Enter fullscreen
+            player.fullscreen.enter();
+        });
+        
+        player.on('play', event => {
+            console.log('Video started playing');
         });
     </script>
-
 </body>
 </html>
