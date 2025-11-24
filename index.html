@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="player"></div>
+    
+    <script>
+        // Get URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoUrl = urlParams.get('url');
+        
+        if (!videoUrl) {
+            document.body.innerHTML = '<div style="color: #fff; padding: 20px; font-family: sans-serif;">Missing URL parameter. Use: ?url=YOUTUBE_URL</div>';
+        } else {
+            // Extract video ID from various YouTube URL formats
+            let videoId = null;
+            
+            // Standard: youtube.com/watch?v=VIDEO_ID
+            if (videoUrl.includes('youtube.com/watch?v=')) {
+                videoId = new URL(videoUrl).searchParams.get('v');
+            }
+            // Short: youtu.be/VIDEO_ID
+            else if (videoUrl.includes('youtu.be/')) {
+                videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+            }
+            // Embed: youtube.com/embed/VIDEO_ID
+            else if (videoUrl.includes('youtube.com/embed/')) {
+                videoId = videoUrl.split('embed/')[1].split('?')[0];
+            }
+            
+            if (videoId) {
+                // Create iframe with autoplay
+                document.getElementById('player').innerHTML = 
+                    `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                     allowfullscreen></iframe>`;
+            } else {
+                document.body.innerHTML = '<div style="color: #fff; padding: 20px; font-family: sans-serif;">Invalid YouTube URL</div>';
+            }
+        }
+    </script>
+</body>
+</html>
