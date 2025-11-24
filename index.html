@@ -40,18 +40,17 @@
             display: none !important;
         }
         
-        /* Click to play overlay */
+        /* Hit ENTER overlay */
         #play-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.8);
+            background: #000;
             display: flex;
             justify-content: center;
             align-items: center;
-            cursor: pointer;
             z-index: 9999;
         }
         
@@ -59,19 +58,21 @@
             display: none;
         }
         
-        #play-button {
-            background: #ff0000;
+        #play-message {
             color: white;
-            border: none;
-            padding: 30px 60px;
-            font-size: 24px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: transform 0.2s;
+            font-size: 48px;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            animation: pulse 2s ease-in-out infinite;
         }
         
-        #play-button:hover {
-            transform: scale(1.1);
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
         
         #error-message {
@@ -90,9 +91,9 @@
     </style>
 </head>
 <body>
-    <!-- Click to Play Overlay -->
+    <!-- Hit ENTER Overlay -->
     <div id="play-overlay">
-        <button id="play-button">▶ Click to Play with Audio</button>
+        <div id="play-message">Hit ENTER to Play</div>
     </div>
     
     <!-- Error Message -->
@@ -132,7 +133,6 @@
         
         let player;
         const overlay = document.getElementById('play-overlay');
-        const playButton = document.getElementById('play-button');
         const errorMessage = document.getElementById('error-message');
         const playerContainer = document.getElementById('player-container');
         
@@ -142,13 +142,23 @@
             overlay.classList.add('hidden');
         }
         
+        function startPlayback() {
+            overlay.classList.add('hidden');
+            player.muted = false; // Unmute
+            player.volume = 1.0; // Full volume
+            player.play().catch(err => {
+                console.error('Play error:', err);
+                showError('Failed to play video: ' + err.message);
+            });
+        }
+        
         if (!videoParam) {
-            showError('❌ No video parameter found. Use: ?video=YOUTUBE_URL');
+            showError('No video parameter found. Use: ?video=YOUTUBE_URL');
         } else {
             const videoId = getYouTubeVideoId(videoParam);
             
             if (!videoId) {
-                showError('❌ Invalid YouTube URL or video ID');
+                showError('Invalid YouTube URL or video ID');
             } else {
                 // Create iframe with video ID
                 playerContainer.innerHTML = `
@@ -167,15 +177,16 @@
                     volume: 1.0, // Full volume
                 });
                 
-                // Play with audio on button click
-                playButton.addEventListener('click', () => {
-                    overlay.classList.add('hidden');
-                    player.muted = false; // Unmute
-                    player.volume = 1.0; // Full volume
-                    player.play().catch(err => {
-                        console.error('Play error:', err);
-                        showError('❌ Failed to play video: ' + err.message);
-                    });
+                // Listen for ENTER key
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' && !overlay.classList.contains('hidden')) {
+                        startPlayback();
+                    }
+                });
+                
+                // Also allow click to play
+                overlay.addEventListener('click', () => {
+                    startPlayback();
                 });
                 
                 player.on('ready', event => {
