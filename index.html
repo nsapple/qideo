@@ -9,37 +9,48 @@
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     
     <style>
-        body {
+        * {
             margin: 0;
-            padding: 20px;
-            background: #1a1a1a;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
         }
         
         .container {
-            max-width: 900px;
             width: 100%;
+            height: 100%;
         }
         
-        h1 {
-            color: #fff;
-            text-align: center;
-            margin-bottom: 20px;
+        .plyr__video-embed,
+        .plyr,
+        .plyr iframe {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        /* Hide Plyr controls */
+        .plyr__controls {
+            display: none !important;
+        }
+        
+        /* Hide YouTube branding/logo */
+        .plyr__video-embed iframe {
+            border: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>YouTube Player with Plyr</h1>
-        
         <!-- YouTube Video Embed -->
         <div class="plyr__video-embed">
             <iframe
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ?origin=https://example.com"
+                src="https://www.youtube.com/embed/dQw4w9WgXcQ?origin=https://example.com&autoplay=1&mute=1"
                 allowfullscreen
                 allowtransparency
                 allow="autoplay">
@@ -51,20 +62,23 @@
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     
     <script>
-        // Initialize Plyr
+        // Initialize Plyr with minimal controls
         const player = new Plyr('.plyr__video-embed', {
-            controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
-            settings: ['captions', 'quality', 'speed'],
+            controls: [], // Empty array = no controls
+            autoplay: true,
+            muted: true, // Required for autoplay to work in most browsers
+            clickToPlay: false, // Prevent pausing on click
         });
         
-        // Automatically enter fullscreen when ready
+        // Auto-play when ready
         player.on('ready', event => {
             console.log('Player is ready!');
-            
-            // Enter fullscreen
-            player.fullscreen.enter();
+            player.play().catch(err => {
+                console.log('Autoplay prevented:', err);
+            });
         });
         
+        // Optional: Log events
         player.on('play', event => {
             console.log('Video started playing');
         });
