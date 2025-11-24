@@ -25,6 +25,7 @@
         .container {
             width: 100%;
             height: 100%;
+            position: relative;
         }
         
         .plyr__video-embed,
@@ -39,22 +40,68 @@
             display: none !important;
         }
         
-        /* Hide YouTube branding/logo */
-        .plyr__video-embed iframe {
+        /* Click to play overlay */
+        #play-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 9999;
+        }
+        
+        #play-overlay.hidden {
+            display: none;
+        }
+        
+        #play-button {
+            background: #ff0000;
+            color: white;
             border: none;
+            padding: 30px 60px;
+            font-size: 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        #play-button:hover {
+            transform: scale(1.1);
+        }
+        
+        #error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 10px;
+            font-size: 18px;
+            display: none;
+            z-index: 10000;
         }
     </style>
 </head>
 <body>
+    <!-- Click to Play Overlay -->
+    <div id="play-overlay">
+        <button id="play-button">▶ Click to Play with Audio</button>
+    </div>
+    
+    <!-- Error Message -->
+    <div id="error-message"></div>
+    
     <div class="container">
         <!-- YouTube Video Embed -->
-        <div class="plyr__video-embed">
-            <iframe
-                src="https://www.youtube.com/embed/dQw4w9WgXcQ?origin=https://example.com&autoplay=1&mute=1"
-                allowfullscreen
-                allowtransparency
-                allow="autoplay">
-            </iframe>
+        <div class="plyr__video-embed" id="player-container">
+            <!-- Will be populated by JavaScript -->
         </div>
     </div>
 
@@ -62,26 +109,84 @@
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     
     <script>
-        // Initialize Plyr with minimal controls
-        const player = new Plyr('.plyr__video-embed', {
-            controls: [], // Empty array = no controls
-            autoplay: true,
-            muted: true, // Required for autoplay to work in most browsers
-            clickToPlay: false, // Prevent pausing on click
-        });
+        // Function to extract YouTube video ID from various URL formats
+        function getYouTubeVideoId(url) {
+            // Handle different YouTube URL formats
+            const patterns = [
+                /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\?\/]+)/,
+                /^([a-zA-Z0-9_-]{11})$/ // Direct video ID
+            ];
+            
+            for (let pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) {
+                    return match[1];
+                }
+            }
+            return null;
+        }
         
-        // Auto-play when ready
-        player.on('ready', event => {
-            console.log('Player is ready!');
-            player.play().catch(err => {
-                console.log('Autoplay prevented:', err);
-            });
-        });
+        // Get video URL from query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const videoParam = urlParams.get('video');
         
-        // Optional: Log events
-        player.on('play', event => {
-            console.log('Video started playing');
-        });
+        let player;
+        const overlay = document.getElementById('play-overlay');
+        const playButton = document.getElementById('play-button');
+        const errorMessage = document.getElementById('error-message');
+        const playerContainer = document.getElementById('player-container');
+        
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            overlay.classList.add('hidden');
+        }
+        
+        if (!videoParam) {
+            showError('❌ No video parameter found. Use: ?video=YOUTUBE_URL');
+        } else {
+            const videoId = getYouTubeVideoId(videoParam);
+            
+            if (!videoId) {
+                showError('❌ Invalid YouTube URL or video ID');
+            } else {
+                // Create iframe with video ID
+                playerContainer.innerHTML = `
+                    <iframe
+                        src="https://www.youtube.com/embed/${videoId}?origin=${window.location.origin}"
+                        allowfullscreen
+                        allowtransparency
+                        allow="autoplay">
+                    </iframe>
+                `;
+                
+                // Initialize Plyr
+                player = new Plyr('.plyr__video-embed', {
+                    controls: [], // No controls
+                    clickToPlay: false,
+                    volume: 1.0, // Full volume
+                });
+                
+                // Play with audio on button click
+                playButton.addEventListener('click', () => {
+                    overlay.classList.add('hidden');
+                    player.muted = false; // Unmute
+                    player.volume = 1.0; // Full volume
+                    player.play().catch(err => {
+                        console.error('Play error:', err);
+                        showError('❌ Failed to play video: ' + err.message);
+                    });
+                });
+                
+                player.on('ready', event => {
+                    console.log('Player ready with video ID:', videoId);
+                });
+                
+                player.on('play', event => {
+                    console.log('Video playing with audio');
+                });
+            }
+        }
     </script>
 </body>
 </html>
