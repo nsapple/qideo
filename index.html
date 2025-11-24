@@ -14,16 +14,37 @@
             background: #000;
             overflow: hidden;
         }
-        iframe {
+        #player {
+            position: fixed;
+            inset: 0;
             width: 100vw;
             height: 100vh;
             border: none;
         }
+        #click-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            color: #fff;
+            font-family: sans-serif;
+            font-size: 24px;
+            text-align: center;
+        }
+        #click-overlay.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div id="player"></div>
+    <iframe id="player" allow="autoplay; fullscreen; picture-in-picture"></iframe>
+    <div id="click-overlay">Click anywhere to play fullscreen</div>
     
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script>
         // Get URL parameter
         const urlParams = new URLSearchParams(window.location.search);
@@ -35,27 +56,73 @@
             // Extract video ID from various YouTube URL formats
             let videoId = null;
             
-            // Standard: youtube.com/watch?v=VIDEO_ID
             if (videoUrl.includes('youtube.com/watch?v=')) {
                 videoId = new URL(videoUrl).searchParams.get('v');
-            }
-            // Short: youtu.be/VIDEO_ID
-            else if (videoUrl.includes('youtu.be/')) {
+            } else if (videoUrl.includes('youtu.be/')) {
                 videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
-            }
-            // Embed: youtube.com/embed/VIDEO_ID
-            else if (videoUrl.includes('youtube.com/embed/')) {
+            } else if (videoUrl.includes('youtube.com/embed/')) {
                 videoId = videoUrl.split('embed/')[1].split('?')[0];
             }
             
-            if (videoId) {
-                // Create iframe with autoplay
-                document.getElementById('player').innerHTML = 
-                    `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                     allowfullscreen></iframe>`;
-            } else {
+            if (!videoId) {
                 document.body.innerHTML = '<div style="color: #fff; padding: 20px; font-family: sans-serif;">Invalid YouTube URL</div>';
+            } else {
+                let player;
+                
+                // YouTube IFrame API callback
+                window.onYouTubeIframeAPIReady = function() {
+                    player = new YT.Player('player', {
+                        videoId: videoId,
+                        playerVars: {
+                            autoplay: 1,
+                            mute: 1,
+                            playsinline: 1,
+                            rel: 0,
+                            controls: 1
+                        },
+                        events: {
+                            onReady: function(event) {
+                                event.target.mute();
+                                event.target.playVideo();
+                            }
+                        }
+                    });
+                };
+                
+                // Click to go fullscreen and unmute
+                const overlay = document.getElementById('click-overlay');
+                const iframe = document.getElementById('player');
+                
+                async function goFullscreen() {
+                    overlay.classList.add('hidden');
+                    
+                    // Unmute
+                    if (player && player.unMute) {
+                        player.unMute();
+                    }
+                    
+                    // Request fullscreen
+                    try {
+                        if (iframe.requestFullscreen) {
+                            await iframe.requestFullscreen();
+                        } else if (iframe.webkitRequestFullscreen) {
+                            await iframe.webkitRequestFullscreen();
+                        } else if (iframe.mozRequestFullScreen) {
+                            await iframe.mozRequestFullScreen();
+                        } else if (iframe.msRequestFullscreen) {
+                            await iframe.msRequestFullscreen();
+                        }
+                    } catch (err) {
+                        console.log('Fullscreen not available:', err);
+                    }
+                }
+                
+                overlay.addEventListener('click', goFullscreen);
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        goFullscreen();
+                    }
+                });
             }
         }
     </script>
