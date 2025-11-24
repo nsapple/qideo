@@ -19,16 +19,16 @@
             inset: 0;
             width: 100vw;
             height: 100vh;
+            background: #000;
         }
-        #player {
+        #player iframe {
             width: 100%;
             height: 100%;
-            border: none;
         }
         #click-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.5); /* 50% transparency */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -38,6 +38,7 @@
             font-family: sans-serif;
             font-size: 24px;
             text-align: center;
+            user-select: none;
         }
         #click-overlay.hidden {
             display: none;
@@ -45,95 +46,128 @@
     </style>
 </head>
 <body>
+
     <div id="player-container">
         <div id="player"></div>
     </div>
+
     <div id="click-overlay">Click anywhere to play fullscreen</div>
-    
+
     <script src="https://www.youtube.com/iframe_api"></script>
     <script>
-        // Get URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const videoUrl = urlParams.get('url');
-        
-        if (!videoUrl) {
-            document.body.innerHTML = '<div style="color: #fff; padding: 20px; font-family: sans-serif;">Missing URL parameter. Use: ?url=YOUTUBE_URL</div>';
-        } else {
-            // Extract video ID from various YouTube URL formats
-            let videoId = null;
-            
-            if (videoUrl.includes('youtube.com/watch?v=')) {
-                videoId = new URL(videoUrl).searchParams.get('v');
-            } else if (videoUrl.includes('youtu.be/')) {
-                videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
-            } else if (videoUrl.includes('youtube.com/embed/')) {
-                videoId = videoUrl.split('embed/')[1].split('?')[0];
+        let player = null;
+        let playerReady = false;
+
+        /* ------------------------------
+           GET & VALIDATE URL PARAMETER
+        ------------------------------ */
+        const params = new URLSearchParams(window.location.search);
+        const fullUrl = params.get("url");
+
+        if (!fullUrl) {
+            document.body.innerHTML =
+                '<div style="color:#fff;padding:20px;font-family:sans-serif;">Missing ?url=YOUTUBE_URL</div>';
+        }
+
+        /* ------------------------------
+           UNIVERSAL YOUTUBE ID PARSER
+        ------------------------------ */
+        function extractVideoId(url) {
+            try {
+                url = new URL(url, window.location.origin).toString();
+            } catch {
+                return null;
             }
-            
-            if (!videoId) {
-                document.body.innerHTML = '<div style="color: #fff; padding: 20px; font-family: sans-serif;">Invalid YouTube URL</div>';
-            } else {
-                let player;
-                
-                // YouTube IFrame API callback
-                window.onYouTubeIframeAPIReady = function() {
-                    player = new YT.Player('player', {
-                        width: '100%',
-                        height: '100%',
-                        videoId: videoId,
-                        playerVars: {
-                            autoplay: 1,
-                            mute: 1,
-                            playsinline: 1,
-                            rel: 0,
-                            controls: 1,
-                            fs: 1
-                        },
-                        events: {
-                            onReady: function(event) {
-                                event.target.mute();
-                                event.target.playVideo();
-                            }
-                        }
-                    });
-                };
-                
-                // Click to go fullscreen and unmute
-                const overlay = document.getElementById('click-overlay');
-                const container = document.getElementById('player-container');
-                
-                async function goFullscreen() {
-                    overlay.classList.add('hidden');
-                    
-                    // Unmute
-                    if (player && player.unMute) {
-                        player.unMute();
-                    }
-                    
-                    // Request fullscreen on the container
-                    try {
-                        if (container.requestFullscreen) {
-                            await container.requestFullscreen();
-                        } else if (container.webkitRequestFullscreen) {
-                            await container.webkitRequestFullscreen();
-                        } else if (container.mozRequestFullScreen) {
-                            await container.mozRequestFullScreen();
-                        } else if (container.msRequestFullscreen) {
-                            await container.msRequestFullscreen();
-                        }
-                    } catch (err) {
-                        console.log('Fullscreen not available:', err);
+
+            // Matches normal, embed, short, live, etc.
+            const patterns = [
+                /v=([A-Za-z0-9_-]{11})/,
+                /youtu\.be\/([A-Za-z0-9_-]{11})/,
+                /embed\/([A-Za-z0-9_-]{11})/,
+                /shorts\/([A-Za-z0-9_-]{11})/,
+                /live\/([A-Za-z0-9_-]{11})/,
+                /youtube\.com\/v\/([A-Za-z0-9_-]{11})/
+            ];
+
+            for (const p of patterns) {
+                const match = url.match(p);
+                if (match) return match[1];
+            }
+
+            return null;
+        }
+
+        const videoId = extractVideoId(fullUrl);
+
+        if (!videoId) {
+            document.body.innerHTML =
+                '<div style="color:#fff;padding:20px;font-family:sans-serif;">Invalid YouTube URL</div>';
+        }
+
+        /* ------------------------------
+           YOUTUBE IFRAME API INITIALIZER
+        ------------------------------ */
+        window.onYouTubeIframeAPIReady = function () {
+            player = new YT.Player("player", {
+                width: "100%",
+                height: "100%",
+                videoId: videoId,
+                playerVars: {
+                    autoplay: 1,
+                    mute: 1,
+                    playsinline: 1,
+                    rel: 0,
+                    controls: 1,
+                    fs: 1
+                },
+                events: {
+                    onReady: event => {
+                        playerReady = true;
+                        event.target.mute();
+                        event.target.playVideo();
                     }
                 }
-                
-                overlay.addEventListener('click', goFullscreen);
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        goFullscreen();
-                    }
-                });
+            });
+        };
+
+        /* ------------------------------
+           FULLSCREEN HANDLER
+        ------------------------------ */
+        const overlay = document.getElementById("click-overlay");
+        const container = document.getElementById("player-container");
+
+        async function goFullscreen() {
+            if (!playerReady) return; // Prevents errors
+
+            overlay.classList.add("hidden");
+
+            // Unmute only after user interaction
+            try {
+                player.unMute();
+            } catch {}
+
+            // Fullscreen
+            try {
+                if (container.requestFullscreen) {
+                    await container.requestFullscreen();
+                } else if (container.webkitRequestFullscreen) {
+                    await container.webkitRequestFullscreen();
+                } else if (container.msRequestFullscreen) {
+                    await container.msRequestFullscreen();
+                }
+            } catch (err) {
+                console.log("Fullscreen failed:", err);
             }
         }
+
+        overlay.addEventListener("click", goFullscreen);
+
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter" || e.key === " ") {
+                goFullscreen();
+            }
+        });
     </script>
+
 </body>
 </html>
